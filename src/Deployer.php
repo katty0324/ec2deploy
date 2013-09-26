@@ -17,19 +17,32 @@ class Deployer {
 	public function deploy($elbName, $commandTemplate) {
 
 		$instances = $this->listInstances($elbName);
-
+		echo $instances->count() . " instances on ELB ${elbName}\n";
+		
 		foreach ($instances as $instance) {
 
-			while (!$this->isHealthy($instances))
+			$instanceId = $instance->InstanceId->to_string();
+			echo "Instance ID: ${instanceId}\n";
+
+			while (!$this->isHealthy($instances)) {
+				echo "Currently not healthy...\n";
 				sleep(5);
+			}
 
-			// TODO deregister instance
+			$this->deregisterInstance($elbName, $instanceId);
+			echo "Deregistered instance.\n";
+			sleep(5);
 
-			$instance = $this->describeInstance($instance->InstanceId->to_string());
+			$instance = $this->describeInstance($instanceId);
 			$variables = $this->extractVariables($instance);
 			$command = $this->render($commandTemplate, $variables);
+			echo "Run: ${command}\n";
+			exec($command, $output);
+			echo implode("\n", $output) . "\n";
 
-			// TODO register instance
+			$this->registerInstance($elbName, $instanceId);
+			echo "Registered instance.\n";
+			sleep(5);
 
 		}
 
@@ -92,7 +105,7 @@ class Deployer {
 		if (!$response->isOK())
 			throw new Exception($response->body->Error->Message);
 
-		return $response->body->DescribeInstanceHealthResult->InstanceStates->member;
+		return $response->body->DescribeInstanceHealthResult->InstanceStates->member();
 
 	}
 
@@ -105,6 +118,27 @@ class Deployer {
 
 		return $response->body->reservationSet->item;
 
+	}
+
+	private function deregisterInstance($elbName, $instanceId) {
+
+		$response = $this->amazonELB->deregister_instances_from_load_balancer($elbName, array( array('InstanceId' => $instanceId)));
+
+		if (!$response->isOK())
+			throw new Exception($response->body->Error->Message);
+
+		return $response->body->DeregisterInstancesFromLoadBalancerResult->Instances->member();
+
+	}
+
+	private function registerInstance($elbName, $instanceId) {
+
+		$response = $this->amazonELB->register_instances_with_load_balancer($elbName, array( array('InstanceId' => $instanceId)));
+
+		if (!$response->isOK())
+			throw new Exception($response->body->Error->Message);
+
+		return $response->body->RegisterInstancesWithLoadBalancerResult->Instances->member();
 	}
 
 }
