@@ -14,7 +14,7 @@ class Deployer {
 
 	}
 
-	public function deploy($elbName, $command) {
+	public function deploy($elbName, $commandTemplate) {
 
 		$instances = $this->listInstances($elbName);
 
@@ -27,6 +27,7 @@ class Deployer {
 
 			$instance = $this->describeInstance($instance->InstanceId->to_string());
 			$variables = $this->extractVariables($instance);
+			$command = $this->render($commandTemplate, $variables);
 
 			// TODO register instance
 
@@ -72,6 +73,15 @@ class Deployer {
 			$variables['tag.' . $tag->key->to_string()] = $tag->value->to_string();
 
 		return $variables;
+
+	}
+
+	private function render($template, $variables) {
+
+		foreach ($variables as $key => $value)
+			$template = str_replace('${' . $key . '}', $value, $template);
+
+		return $template;
 
 	}
 
