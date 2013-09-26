@@ -6,7 +6,7 @@ class Deployer {
 	private $amazonEC2;
 
 	public function __construct($region) {
-		
+
 		$this->amazonELB = new AmazonELB();
 		$this->amazonEC2 = new AmazonEC2();
 		$this->amazonELB->set_region("elasticloadbalancing.${region}.amazonaws.com");
@@ -26,6 +26,7 @@ class Deployer {
 			// TODO deregister instance
 
 			$instance = $this->describeInstance($instance->InstanceId->to_string());
+			$variables = $this->extractVariables($instance);
 
 			// TODO register instance
 
@@ -43,6 +44,34 @@ class Deployer {
 				return false;
 
 		return true;
+
+	}
+
+	private function extractVariables($instance) {
+
+		$item = $instance->instancesSet->item;
+
+		$variables = array(
+			'instanceId' => $item->instanceId->to_string(),
+			'imageId' => $item->imageId->to_string(),
+			'instanceState' => $item->instanceState->name->to_string(),
+			'privateDnsName' => $item->privateDnsName->to_string(),
+			'dnsName' => $item->dnsName->to_string(),
+			'keyName' => $item->keyName->to_string(),
+			'instanceType' => $item->instanceType->to_string(),
+			'launchTime' => $item->launchTime->to_string(),
+			'availabilityZone' => $item->placement->availabilityZone->to_string(),
+			'kernelId' => $item->kernelId->to_string(),
+			'subnetId' => $item->subnetId->to_string(),
+			'vpcId' => $item->vpcId->to_string(),
+			'privateIpAddress' => $item->privateIpAddress->to_string(),
+			'ipAddress' => $item->ipAddress->to_string(),
+		);
+
+		foreach ($item->tagSet->item as $tag)
+			$variables['tag.' . $tag->key->to_string()] = $tag->value->to_string();
+
+		return $variables;
 
 	}
 
