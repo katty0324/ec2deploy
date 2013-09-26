@@ -11,13 +11,31 @@ class Deployer {
 
 	public function deploy($elbName, $command) {
 
-		$this->listInstances($elbName);
+		$instances = $this->listInstances($elbName);
+		
+	}
+
+	private function isHealthy($instances) {
+
+		if ($instances->count() == 0)
+			return false;
+
+		foreach ($instances as $instance)
+			if ($instance->State != 'InService')
+				return false;
+
+		return true;
 
 	}
 
 	private function listInstances($elbName) {
 
-		return $this->amazonELB->describe_instance_health($elbName);
+		$response = $this->amazonELB->describe_instance_health($elbName);
+
+		if (!$response->isOK())
+			throw new Exception($response->body->Error->Message);
+
+		return $response->body->DescribeInstanceHealthResult->InstanceStates->member;
 
 	}
 
