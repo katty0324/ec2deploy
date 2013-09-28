@@ -5,12 +5,22 @@ class Deployer {
 	private $amazonELB;
 	private $amazonEC2;
 
-	public function __construct($region) {
+	public function __construct() {
+
+		CFCredentials::set(array(
+			'development' => array(
+				'key' => Config::$awsKey,
+				'secret' => Config::$awsSecret,
+				'default_cache_config' => '',
+				'certificate_authority' => false
+			),
+			'@default' => 'development'
+		));
 
 		$this->amazonELB = new AmazonELB();
 		$this->amazonEC2 = new AmazonEC2();
-		$this->amazonELB->set_region("elasticloadbalancing.${region}.amazonaws.com");
-		$this->amazonEC2->set_region("ec2.${region}.amazonaws.com");
+		$this->amazonELB->set_region('elasticloadbalancing.' . Config::$region . '.amazonaws.com');
+		$this->amazonEC2->set_region('ec2.' . Config::$region . '.amazonaws.com');
 
 	}
 
@@ -18,7 +28,7 @@ class Deployer {
 
 		$instances = $this->listInstances($elbName);
 		echo $instances->count() . " instances on ELB ${elbName}\n";
-		
+
 		foreach ($instances as $instance) {
 
 			$instanceId = $instance->InstanceId->to_string();
