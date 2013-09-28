@@ -2,13 +2,14 @@
 
 class Config {
 
-	public $elbName = null;
-	public $command = null;
-	public $awsKey = null;
-	public $awsSecret = null;
-	public $region = 'ap-northeast-1';
-	public $healthCheckInterval = 10.0;
-	public $gracefulPeriod = 5.0;
+	private $elbName = null;
+	private $command = null;
+	private $awsKey = null;
+	private $awsSecret = null;
+	private $region = 'ap-northeast-1';
+	private $healthCheckInterval = 10.0;
+	private $gracefulPeriod = 5.0;
+	private $help = false;
 
 	public function __construct($argv) {
 		$this->setCommandLineOptions($argv);
@@ -16,7 +17,7 @@ class Config {
 
 	public function setCommandLineOptions($argv) {
 
-		$options = getopt('n:c:k:s:r::h::g::', array(
+		$options = getopt('n:c:k:s:', array(
 			'elb-name:',
 			'command:',
 			'aws-key:',
@@ -24,6 +25,7 @@ class Config {
 			'region::',
 			'health-check-interval::',
 			'graceful-period::',
+			'help',
 		));
 
 		if (array_key_exists('n', $options))
@@ -56,17 +58,35 @@ class Config {
 		if (array_key_exists('region', $options))
 			$this->region = strval($options['region']);
 
-		if (array_key_exists('h', $options))
-			$this->healthCheckInterval = doubleval($options['h']);
-
 		if (array_key_exists('health-check-interval', $options))
 			$this->healthCheckInterval = doubleval($options['health-check-interval']);
 
-		if (array_key_exists('g', $options))
-			$this->gracefulPeriod = doubleval($options['g']);
-
 		if (array_key_exists('graceful-period', $options))
 			$this->gracefulPeriod = doubleval($options['graceful-period']);
+
+		if (array_key_exists('help', $options))
+			$this->help = true;
+
+		if (!$this->validate())
+			$this->help = true;
+
+	}
+
+	private function validate() {
+
+		if (!$this->elbName)
+			return false;
+
+		if (!$this->command)
+			return false;
+
+		if (!$this->awsKey)
+			return false;
+
+		if (!$this->awsSecret)
+			return false;
+
+		return true;
 
 	}
 
@@ -96,6 +116,10 @@ class Config {
 
 	public function getGracefulPeriod() {
 		return $this->gracefulPeriod;
+	}
+
+	public function getHelp() {
+		return $this->help;
 	}
 
 }

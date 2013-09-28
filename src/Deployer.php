@@ -27,7 +27,7 @@ class Deployer {
 		$this->amazonEC2->set_region('ec2.' . $this->config->getRegion() . '.amazonaws.com');
 
 		$this->logger = new Logger();
-		
+
 	}
 
 	public function deploy() {
@@ -44,7 +44,7 @@ class Deployer {
 
 				while (!$this->isHealthy($this->listInstances($this->config->getElbName()))) {
 					$this->logger->info("Currently not healthy...");
-					usleep($this->config->getealthCheckInterval() * 1e6);
+					usleep($this->config->getHealthCheckInterval() * 1e6);
 				}
 
 				$this->deregisterInstance($this->config->getElbName(), $instanceId);
@@ -69,7 +69,10 @@ class Deployer {
 		} catch(Exception $e) {
 			$this->logger->error('Deployer is terminated due to unexpected error.');
 			$this->logger->error($e->getMessage());
+			return false;
 		}
+
+		return true;
 
 	}
 
