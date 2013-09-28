@@ -2,15 +2,19 @@
 
 class Config {
 
-	public static $elbName = null;
-	public static $command = null;
-	public static $awsKey = null;
-	public static $awsSecret = null;
-	public static $region = 'ap-northeast-1';
-	public static $healthCheckInterval = 10.0;
-	public static $gracefulPeriod = 5.0;
+	public $elbName = null;
+	public $command = null;
+	public $awsKey = null;
+	public $awsSecret = null;
+	public $region = 'ap-northeast-1';
+	public $healthCheckInterval = 10.0;
+	public $gracefulPeriod = 5.0;
 
-	public static function setCommandLineOptions($argv) {
+	public function __construct($argv) {
+		$this->setCommandLineOptions($argv);
+	}
+
+	public function setCommandLineOptions($argv) {
 
 		$options = getopt('n:c:k:s:r::h::g::', array(
 			'elb-name:',
@@ -23,47 +27,75 @@ class Config {
 		));
 
 		if (array_key_exists('n', $options))
-			self::$elbName = strval($options['n']);
+			$this->elbName = strval($options['n']);
 
 		if (array_key_exists('elb-name', $options))
-			self::$elbName = strval($options['elb-name']);
+			$this->elbName = strval($options['elb-name']);
 
 		if (array_key_exists('c', $options))
-			self::$command = strval($options['c']);
+			$this->command = strval($options['c']);
 
 		if (array_key_exists('command', $options))
-			self::$command = strval($options['command']);
+			$this->command = strval($options['command']);
 
 		if (array_key_exists('k', $options))
-			self::$awsKey = strval($options['k']);
+			$this->awsKey = strval($options['k']);
 
 		if (array_key_exists('aws-key', $options))
-			self::$awsKey = strval($options['aws-key']);
+			$this->awsKey = strval($options['aws-key']);
 
 		if (array_key_exists('s', $options))
-			self::$awsSecret = strval($options['s']);
+			$this->awsSecret = strval($options['s']);
 
 		if (array_key_exists('aws-secret', $options))
-			self::$awsSecret = strval($options['aws-secret']);
+			$this->awsSecret = strval($options['aws-secret']);
 
 		if (array_key_exists('r', $options))
-			self::$region = strval($options['r']);
+			$this->region = strval($options['r']);
 
 		if (array_key_exists('region', $options))
-			self::$region = strval($options['region']);
+			$this->region = strval($options['region']);
 
 		if (array_key_exists('h', $options))
-			self::$healthCheckInterval = doubleval($options['h']);
+			$this->healthCheckInterval = doubleval($options['h']);
 
 		if (array_key_exists('health-check-interval', $options))
-			self::$healthCheckInterval = doubleval($options['health-check-interval']);
+			$this->healthCheckInterval = doubleval($options['health-check-interval']);
 
 		if (array_key_exists('g', $options))
-			self::$gracefulPeriod = doubleval($options['g']);
+			$this->gracefulPeriod = doubleval($options['g']);
 
 		if (array_key_exists('graceful-period', $options))
-			self::$gracefulPeriod = doubleval($options['graceful-period']);
+			$this->gracefulPeriod = doubleval($options['graceful-period']);
 
+	}
+
+	public function getElbName() {
+		return $this->elbName;
+	}
+
+	public function getCommand() {
+		return $this->command;
+	}
+
+	public function getAwsKey() {
+		return $this->awsKey;
+	}
+
+	public function getAwsSecret() {
+		return $this->awsSecret;
+	}
+
+	public function getRegion() {
+		return $this->region;
+	}
+
+	public function getHealthCheckInterval() {
+		return $this->healthCheckInterval;
+	}
+
+	public function getGracefulPeriod() {
+		return $this->gracefulPeriod;
 	}
 
 }

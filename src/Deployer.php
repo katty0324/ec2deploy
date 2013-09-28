@@ -2,16 +2,19 @@
 
 class Deployer {
 
+	private $config;
 	private $amazonELB;
 	private $amazonEC2;
 	private $logger;
 
-	public function __construct() {
+	public function __construct($config) {
+
+		$this->config = $config;
 
 		CFCredentials::set(array(
 			'development' => array(
-				'key' => Config::$awsKey,
-				'secret' => Config::$awsSecret,
+				'key' => $this->config->getAwsKey(),
+				'secret' => $this->config->getAwsSecret(),
 				'default_cache_config' => '',
 				'certificate_authority' => false
 			),
@@ -20,18 +23,18 @@ class Deployer {
 
 		$this->amazonELB = new AmazonELB();
 		$this->amazonEC2 = new AmazonEC2();
-		$this->amazonELB->set_region('elasticloadbalancing.' . Config::$region . '.amazonaws.com');
-		$this->amazonEC2->set_region('ec2.' . Config::$region . '.amazonaws.com');
+		$this->amazonELB->set_region('elasticloadbalancing.' . $this->config->getRegion() . '.amazonaws.com');
+		$this->amazonEC2->set_region('ec2.' . $this->config->getRegion() . '.amazonaws.com');
 
 		$this->logger = new Logger();
-
+		
 	}
 
-	public function deploy($elbName, $commandTemplate) {
+	public function deploy() {
 
 		try {
 
-			$instances = $this->listInstances($elbName);
+			$instances = $this->listInstances($this->config->getElbName());
 			$this->logger->info($instances->count() . " instances on ELB ${elbName}");
 
 			foreach ($instances as $instance) {
@@ -39,26 +42,26 @@ class Deployer {
 				$instanceId = $instance->InstanceId->to_string();
 				$this->logger->info("Instance ID: ${instanceId}");
 
-				while (!$this->isHealthy($this->listInstances($elbName))) {
+				while (!$this->isHealthy($this->listInstances($this->config->getElbName()))) {
 					$this->logger->info("Currently not healthy...");
-					usleep(Config::$healthCheckInterval * 1e6);
+					usleep($this->config->getealthCheckInterval() * 1e6);
 				}
 
-				$this->deregisterInstance($elbName, $instanceId);
+				$this->deregisterInstance($this->config->getElbName(), $instanceId);
 				$this->logger->info("Deregistered instance.");
 
-				usleep(Config::$gracefulPeriod * 1e6);
+				usleep($this->config->getGracefulPeriod() * 1e6);
 
 				$instance = $this->describeInstance($instanceId);
 				$variables = $this->extractVariables($instance);
-				$command = $this->render($commandTemplate, $variables);
+				$command = $this->render($this->config->getCommand(), $variables);
 				$this->logger->info("Run: ${command}");
 				$output = $this->execute($command);
 				$this->logger->info($output);
 
-				usleep(Config::$gracefulPeriod * 1e6);
+				usleep($this->config->getGracefulPeriod() * 1e6);
 
-				$this->registerInstance($elbName, $instanceId);
+				$this->registerInstance($this->config->getElbName(), $instanceId);
 				$this->logger->info("Registered instance.");
 
 			}
