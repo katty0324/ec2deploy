@@ -30,6 +30,7 @@ class Deployer {
 	public function deploy($elbName, $commandTemplate) {
 
 		try {
+			
 			$instances = $this->listInstances($elbName);
 			$this->logger->info($instances->count() . " instances on ELB ${elbName}");
 
@@ -52,8 +53,8 @@ class Deployer {
 				$variables = $this->extractVariables($instance);
 				$command = $this->render($commandTemplate, $variables);
 				$this->logger->info("Run: ${command}");
-				exec($command, $output);
-				$this->logger->info(implode("\n", $output));
+				$output = $this->execute($command);
+				$this->logger->info($output);
 
 				usleep(Config::$gracefulPeriod * 1e6);
 
@@ -61,7 +62,9 @@ class Deployer {
 				$this->logger->info("Registered instance.");
 
 			}
+
 		} catch(Exception $e) {
+			$this->logger->error('Deployer is terminated due to unexpected error.');
 			$this->logger->error($e->getMessage());
 		}
 
@@ -114,6 +117,17 @@ class Deployer {
 			$template = str_replace('${' . $key . '}', $value, $template);
 
 		return $template;
+
+	}
+
+	private function execute($command) {
+
+		exec($command, $output, $status);
+
+		if ($status != 0)
+			throw new Exception('Command exit code is not zero.');
+
+		return implode("\n", $output);
 
 	}
 
