@@ -36,12 +36,13 @@ class Deployer {
 
 			while (!$this->isHealthy($instances)) {
 				echo "Currently not healthy...\n";
-				sleep(5);
+				usleep(Config::$healthCheckInterval * 1e6);
 			}
 
 			$this->deregisterInstance($elbName, $instanceId);
 			echo "Deregistered instance.\n";
-			sleep(5);
+
+			usleep(Config::$gracefulPeriod * 1e6);
 
 			$instance = $this->describeInstance($instanceId);
 			$variables = $this->extractVariables($instance);
@@ -50,9 +51,10 @@ class Deployer {
 			exec($command, $output);
 			echo implode("\n", $output) . "\n";
 
+			usleep(Config::$gracefulPeriod * 1e6);
+
 			$this->registerInstance($elbName, $instanceId);
 			echo "Registered instance.\n";
-			sleep(5);
 
 		}
 
