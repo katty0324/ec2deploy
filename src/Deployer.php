@@ -30,7 +30,7 @@ class Deployer {
 	public function deploy($elbName, $commandTemplate) {
 
 		try {
-			
+
 			$instances = $this->listInstances($elbName);
 			$this->logger->info($instances->count() . " instances on ELB ${elbName}");
 
@@ -39,7 +39,7 @@ class Deployer {
 				$instanceId = $instance->InstanceId->to_string();
 				$this->logger->info("Instance ID: ${instanceId}");
 
-				while (!$this->isHealthy($instances)) {
+				while (!$this->isHealthy($this->listInstances($elbName))) {
 					$this->logger->info("Currently not healthy...");
 					usleep(Config::$healthCheckInterval * 1e6);
 				}
