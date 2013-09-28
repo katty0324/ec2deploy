@@ -144,6 +144,9 @@ class Deployer {
 		if (!$response->isOK())
 			throw new Exception($response->body->Error->Message);
 
+		if ($response->body->DescribeInstanceHealthResult->InstanceStates->member->count() == 0)
+			throw new Exception('No instance is registered in load balancer.');
+
 		return $response->body->DescribeInstanceHealthResult->InstanceStates->member();
 
 	}
