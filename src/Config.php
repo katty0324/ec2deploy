@@ -22,9 +22,9 @@ class Config {
 			'command:',
 			'aws-key:',
 			'aws-secret:',
-			'region::',
-			'health-check-interval::',
-			'graceful-period::',
+			'region:',
+			'health-check-interval:',
+			'graceful-period:',
 			'help',
 		));
 
