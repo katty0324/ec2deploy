@@ -4,6 +4,7 @@ class Deployer {
 
 	private $amazonELB;
 	private $amazonEC2;
+	private $logger;
 
 	public function __construct() {
 
@@ -22,40 +23,46 @@ class Deployer {
 		$this->amazonELB->set_region('elasticloadbalancing.' . Config::$region . '.amazonaws.com');
 		$this->amazonEC2->set_region('ec2.' . Config::$region . '.amazonaws.com');
 
+		$this->logger = new Logger();
+
 	}
 
 	public function deploy($elbName, $commandTemplate) {
 
-		$instances = $this->listInstances($elbName);
-		echo $instances->count() . " instances on ELB ${elbName}\n";
+		try {
+			$instances = $this->listInstances($elbName);
+			$this->logger->info($instances->count() . " instances on ELB ${elbName}");
 
-		foreach ($instances as $instance) {
+			foreach ($instances as $instance) {
 
-			$instanceId = $instance->InstanceId->to_string();
-			echo "Instance ID: ${instanceId}\n";
+				$instanceId = $instance->InstanceId->to_string();
+				$this->logger->info("Instance ID: ${instanceId}");
 
-			while (!$this->isHealthy($instances)) {
-				echo "Currently not healthy...\n";
-				usleep(Config::$healthCheckInterval * 1e6);
+				while (!$this->isHealthy($instances)) {
+					$this->logger->info("Currently not healthy...");
+					usleep(Config::$healthCheckInterval * 1e6);
+				}
+
+				$this->deregisterInstance($elbName, $instanceId);
+				$this->logger->info("Deregistered instance.");
+
+				usleep(Config::$gracefulPeriod * 1e6);
+
+				$instance = $this->describeInstance($instanceId);
+				$variables = $this->extractVariables($instance);
+				$command = $this->render($commandTemplate, $variables);
+				$this->logger->info("Run: ${command}");
+				exec($command, $output);
+				$this->logger->info(implode("\n", $output));
+
+				usleep(Config::$gracefulPeriod * 1e6);
+
+				$this->registerInstance($elbName, $instanceId);
+				$this->logger->info("Registered instance.");
+
 			}
-
-			$this->deregisterInstance($elbName, $instanceId);
-			echo "Deregistered instance.\n";
-
-			usleep(Config::$gracefulPeriod * 1e6);
-
-			$instance = $this->describeInstance($instanceId);
-			$variables = $this->extractVariables($instance);
-			$command = $this->render($commandTemplate, $variables);
-			echo "Run: ${command}\n";
-			exec($command, $output);
-			echo implode("\n", $output) . "\n";
-
-			usleep(Config::$gracefulPeriod * 1e6);
-
-			$this->registerInstance($elbName, $instanceId);
-			echo "Registered instance.\n";
-
+		} catch(Exception $e) {
+			$this->logger->error($e->getMessage());
 		}
 
 	}
