@@ -3,7 +3,7 @@
 class Config {
 
 	private $elbName = null;
-	private $dependentElbName = null;
+	private $dependentElbNames = array();
 	private $command = null;
 	private $awsKey = null;
 	private $awsSecret = null;
@@ -20,7 +20,7 @@ class Config {
 
 		$options = getopt('n:d:c:k:s:', array(
 			'elb-name:',
-			'dependent-elb-name:',
+			'dependent-elb-names:',
 			'command:',
 			'aws-key:',
 			'aws-secret:',
@@ -37,10 +37,10 @@ class Config {
 			$this->elbName = strval($options['elb-name']);
 
 		if (array_key_exists('d', $options))
-			$this->dependentElbName = strval($options['d']);
+			$this->dependentElbNames = explode(',', strval($options['d']));
 
-		if (array_key_exists('dependent-elb-name', $options))
-			$this->dependentElbName = strval($options['dependent-elb-name']);
+		if (array_key_exists('dependent-elb-names', $options))
+			$this->dependentElbNames = explode(',', strval($options['dependent-elb-names']));
 
 		if (array_key_exists('c', $options))
 			$this->command = strval($options['c']);
@@ -102,8 +102,8 @@ class Config {
 		return $this->elbName;
 	}
 
-	public function getDependentElbName() {
-		return $this->dependentElbName;
+	public function getDependentElbNames() {
+		return $this->dependentElbNames;
 	}
 
 	public function getCommand() {

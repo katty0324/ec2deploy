@@ -34,30 +34,31 @@ class Deployer {
 
 		try {
 
-			$instances = $this->listInstances($this->config->getElbName());
-			$this->logger->info($instances->count() . ' instances on ELB ' . $this->config->getElbName());
+			$mainElbName = $this->config->getElbName();
+			$dependentElbNames = $this->config->getDependentElbNames();
+			$allElbNames = array_merge(array($mainElbName), $dependentElbNames);
 
-			if($this->config->getDependentElbName()) {
-				$dependentElbInstances = $this->listInstances($this->config->getElbName());
-				$this->logger->info($dependentElbInstances->count() . ' instances on dependent ELB ' . $this->config->getDependentElbName());
+			foreach ($allElbNames as $elbName) {
+				$instances = $this->listInstances($elbName);
+				$this->logger->info($instances->count() . ' instances on dependent ELB ' . $elbName);
 			}
 
-			foreach ($instances as $instance) {
+			foreach ($this->listInstances($mainElbName) as $instance) {
 
 				$instanceId = $instance->InstanceId->to_string();
 				$this->logger->info("Instance ID: ${instanceId}");
 
-				$this->waitUntilHealthy($this->config->getElbName());
-				if($this->config->getDependentElbName())
-					$this->waitUntilHealthy($this->config->getDependentElbName());
+				foreach ($allElbNames as $elbName)
+					$this->waitUntilHealthy($elbName);
 
-				$this->deregisterInstance($this->config->getElbName(), $instanceId);
-				$this->logger->info('Deregistered instance from ' . $this->config->getElbName());
+				$relatedElbNames = array();
 
-				$registeredInstanceInDependentElb = $this->registerInstance($this->config->getDependentElbName(), $instanceId);
-				if($registeredInstanceInDependentElb) {
-					$this->deregisterInstance($this->config->getDependentElbName(), $instanceId);
-					$this->logger->info('Deregistered instance from ' . $this->config->getDependentElbName());
+				foreach ($allElbNames as $elbName) {
+					if(!$this->registeredInstance($elbName, $instanceId))
+						continue;
+					$relatedElbNames[] = $elbName;
+					$this->deregisterInstance($elbName, $instanceId);
+					$this->logger->info('Deregistered instance from ' . $elbName);
 				}
 
 				usleep($this->config->getGracefulPeriod() * 1e6);
@@ -71,13 +72,10 @@ class Deployer {
 
 				usleep($this->config->getGracefulPeriod() * 1e6);
 
-				if($registeredInstanceInDependentElb) {
-					$this->registerInstance($this->config->getDependentElbName(), $instanceId);
-					$this->logger->info('Registered instance to ' . $this->config->getDependentElbName());
+				foreach (array_reverse($relatedElbNames) as $relatedElbName) {
+					$this->registerInstance($relatedElbName, $instanceId);
+					$this->logger->info('Registered instance to ' . $relatedElbName);
 				}
-
-				$this->registerInstance($this->config->getElbName(), $instanceId);
-				$this->logger->info('Registered instance to ' . $this->config->getElbName());
 
 			}
 
@@ -93,7 +91,7 @@ class Deployer {
 
 	private function registeredInstance($elbName, $instanceId) {
 
-		$instances = $this->listInstances(elbName);
+		$instances = $this->listInstances($elbName);
 
 		foreach ($instances as $instance)
 			if($instance->InstanceId->to_string() == $instanceId)

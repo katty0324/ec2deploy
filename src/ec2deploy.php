@@ -11,7 +11,7 @@ if ($config->getHelp()) {
 Usage: ec2deploy -n <elb-name> -c <command> -k <aws-key> -s <aws-secret>
 
 -n  --elb-name              instance name of Amazon ELB
--d  --dependent-elb-name	instance name of dependent Amazon ELB
+-d  --dependent-elb-names	instance names of dependent Amazon ELBs (comma separated)
 -c  --command               shell command
 -k  --aws-key               AWS access key
 -s  --aws-secret            AWS access secret
