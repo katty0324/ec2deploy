@@ -56,3 +56,20 @@ If the application name is specified with EC2 instance tag "ContextName" and you
 ec2deploy -k 'AWS-ACCESS-KEY' -s 'AWS-ACCESS-SECRET' -n 'ELB-NAME' -c 'ssh ${dnsName} deploy ${tag.ContextName}'
 ```
 
+## Options
+
+```shell
+Usage: ec2deploy -n <elb-name> -c <command> -k <aws-key> -s <aws-secret>
+
+-n  --elb-name              instance name of Amazon ELB
+-d  --dependent-elb-names	instance names of dependent Amazon ELBs (comma separated)
+-c  --command               shell command
+-k  --aws-key               AWS access key
+-s  --aws-secret            AWS access secret
+    --region                region of Amazon EC2 and ELB
+    --health-check-interval interval of Amazon ELB health check
+    --graceful-period       sleep time for register and deregister instance for Amazon ELB
+    --help                  help
+```
+
+Dependent ELB means ELB having the same instance as the target ELB. The instance to be deployed will be also deregistered from dependent ELBs.

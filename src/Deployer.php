@@ -34,21 +34,32 @@ class Deployer {
 
 		try {
 
-			$instances = $this->listInstances($this->config->getElbName());
-			$this->logger->info($instances->count() . ' instances on ELB ' . $this->config->getElbName());
+			$mainElbName = $this->config->getElbName();
+			$dependentElbNames = $this->config->getDependentElbNames();
+			$allElbNames = array_merge(array($mainElbName), $dependentElbNames);
 
-			foreach ($instances as $instance) {
+			foreach ($allElbNames as $elbName) {
+				$instances = $this->listInstances($elbName);
+				$this->logger->info($instances->count() . ' instances on dependent ELB ' . $elbName);
+			}
+
+			foreach ($this->listInstances($mainElbName) as $instance) {
 
 				$instanceId = $instance->InstanceId->to_string();
 				$this->logger->info("Instance ID: ${instanceId}");
 
-				while (!$this->isHealthy($this->listInstances($this->config->getElbName()))) {
-					$this->logger->info("Currently not healthy...");
-					usleep($this->config->getHealthCheckInterval() * 1e6);
-				}
+				foreach ($allElbNames as $elbName)
+					$this->waitUntilHealthy($elbName);
 
-				$this->deregisterInstance($this->config->getElbName(), $instanceId);
-				$this->logger->info("Deregistered instance.");
+				$relatedElbNames = array();
+
+				foreach ($allElbNames as $elbName) {
+					if (!$this->registeredInstance($elbName, $instanceId))
+						continue;
+					$relatedElbNames[] = $elbName;
+					$this->deregisterInstance($elbName, $instanceId);
+					$this->logger->info('Deregistered instance from ' . $elbName);
+				}
 
 				usleep($this->config->getGracefulPeriod() * 1e6);
 
@@ -61,8 +72,10 @@ class Deployer {
 
 				usleep($this->config->getGracefulPeriod() * 1e6);
 
-				$this->registerInstance($this->config->getElbName(), $instanceId);
-				$this->logger->info("Registered instance.");
+				foreach (array_reverse($relatedElbNames) as $relatedElbName) {
+					$this->registerInstance($relatedElbName, $instanceId);
+					$this->logger->info('Registered instance to ' . $relatedElbName);
+				}
 
 			}
 
@@ -73,6 +86,27 @@ class Deployer {
 		}
 
 		return true;
+
+	}
+
+	private function registeredInstance($elbName, $instanceId) {
+
+		$instances = $this->listInstances($elbName);
+
+		foreach ($instances as $instance)
+			if ($instance->InstanceId->to_string() == $instanceId)
+				return true;
+
+		return false;
+
+	}
+
+	private function waitUntilHealthy($elbName) {
+
+		while (!$this->isHealthy($this->listInstances($elbName))) {
+			$this->logger->info("${elbName} is currently not healthy...");
+			usleep($this->config->getHealthCheckInterval() * 1e6);
+		}
 
 	}
 
@@ -145,7 +179,7 @@ class Deployer {
 			throw new Exception($response->body->Error->Message);
 
 		if ($response->body->DescribeInstanceHealthResult->InstanceStates->member->count() == 0)
-			throw new Exception('No instance is registered in load balancer.');
+			throw new Exception("No instance is registered in load balancer ${elbName}.");
 
 		return $response->body->DescribeInstanceHealthResult->InstanceStates->member();
 

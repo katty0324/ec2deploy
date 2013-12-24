@@ -3,6 +3,7 @@
 class Config {
 
 	private $elbName = null;
+	private $dependentElbNames = array();
 	private $command = null;
 	private $awsKey = null;
 	private $awsSecret = null;
@@ -17,8 +18,9 @@ class Config {
 
 	public function setCommandLineOptions($argv) {
 
-		$options = getopt('n:c:k:s:', array(
+		$options = getopt('n:d:c:k:s:', array(
 			'elb-name:',
+			'dependent-elb-names:',
 			'command:',
 			'aws-key:',
 			'aws-secret:',
@@ -33,6 +35,12 @@ class Config {
 
 		if (array_key_exists('elb-name', $options))
 			$this->elbName = strval($options['elb-name']);
+
+		if (array_key_exists('d', $options))
+			$this->dependentElbNames = explode(',', strval($options['d']));
+
+		if (array_key_exists('dependent-elb-names', $options))
+			$this->dependentElbNames = explode(',', strval($options['dependent-elb-names']));
 
 		if (array_key_exists('c', $options))
 			$this->command = strval($options['c']);
@@ -92,6 +100,10 @@ class Config {
 
 	public function getElbName() {
 		return $this->elbName;
+	}
+
+	public function getDependentElbNames() {
+		return $this->dependentElbNames;
 	}
 
 	public function getCommand() {
