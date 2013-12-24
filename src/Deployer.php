@@ -37,15 +37,19 @@ class Deployer {
 			$instances = $this->listInstances($this->config->getElbName());
 			$this->logger->info($instances->count() . ' instances on ELB ' . $this->config->getElbName());
 
+			if($this->config->getDependentElbName()) {
+				$dependentElbInstances = $this->listInstances($this->config->getElbName());
+				$this->logger->info($dependentElbInstances->count() . ' instances on dependent ELB ' . $this->config->getDependentElbName());
+			}
+
 			foreach ($instances as $instance) {
 
 				$instanceId = $instance->InstanceId->to_string();
 				$this->logger->info("Instance ID: ${instanceId}");
 
-				while (!$this->isHealthy($this->listInstances($this->config->getElbName()))) {
-					$this->logger->info("Currently not healthy...");
-					usleep($this->config->getHealthCheckInterval() * 1e6);
-				}
+				$this->waitUntilHealthy($this->config->getElbName());
+				if($this->config->getDependentElbName())
+					$this->waitUntilHealthy($this->config->getDependentElbName());
 
 				$this->deregisterInstance($this->config->getElbName(), $instanceId);
 				$this->logger->info("Deregistered instance.");
@@ -73,6 +77,15 @@ class Deployer {
 		}
 
 		return true;
+
+	}
+
+	private function waitUntilHealthy($elbName){
+
+		while (!$this->isHealthy($this->listInstances($elbName))) {
+			$this->logger->info("${elbName} is currently not healthy...");
+			usleep($this->config->getHealthCheckInterval() * 1e6);
+		}
 
 	}
 

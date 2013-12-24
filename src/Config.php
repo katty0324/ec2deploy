@@ -102,6 +102,10 @@ class Config {
 		return $this->elbName;
 	}
 
+	public function getDependentElbName() {
+		return $this->dependentElbName;
+	}
+
 	public function getCommand() {
 		return $this->command;
 	}
