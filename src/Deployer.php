@@ -35,7 +35,7 @@ class Deployer {
 		try {
 
 			$instances = $this->listInstances($this->config->getElbName());
-			$this->logger->info($instances->count() . " instances on ELB ${elbName}");
+			$this->logger->info($instances->count() . ' instances on ELB ' . $this->config->getElbName());
 
 			foreach ($instances as $instance) {
 
