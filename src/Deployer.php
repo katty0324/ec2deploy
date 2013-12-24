@@ -54,7 +54,7 @@ class Deployer {
 				$relatedElbNames = array();
 
 				foreach ($allElbNames as $elbName) {
-					if(!$this->registeredInstance($elbName, $instanceId))
+					if (!$this->registeredInstance($elbName, $instanceId))
 						continue;
 					$relatedElbNames[] = $elbName;
 					$this->deregisterInstance($elbName, $instanceId);
@@ -94,14 +94,14 @@ class Deployer {
 		$instances = $this->listInstances($elbName);
 
 		foreach ($instances as $instance)
-			if($instance->InstanceId->to_string() == $instanceId)
+			if ($instance->InstanceId->to_string() == $instanceId)
 				return true;
-		
+
 		return false;
 
 	}
 
-	private function waitUntilHealthy($elbName){
+	private function waitUntilHealthy($elbName) {
 
 		while (!$this->isHealthy($this->listInstances($elbName))) {
 			$this->logger->info("${elbName} is currently not healthy...");
@@ -179,7 +179,7 @@ class Deployer {
 			throw new Exception($response->body->Error->Message);
 
 		if ($response->body->DescribeInstanceHealthResult->InstanceStates->member->count() == 0)
-			throw new Exception('No instance is registered in load balancer.');
+			throw new Exception("No instance is registered in load balancer ${elbName}.");
 
 		return $response->body->DescribeInstanceHealthResult->InstanceStates->member();
 
