@@ -77,11 +77,9 @@ class Deployer {
 
 				usleep($this->config->getGracefulPeriod() * 1e6);
 
-				foreach($instances as $instance) {
-					foreach (array_reverse($relatedElbNames) as $instanceId => $relatedElbName) {
-						$this->registerInstance($relatedElbName, $instanceId);
-						$this->logger->info("Registered instance ${instanceId} to ELB ${relatedElbName}");
-					}
+				foreach (array_reverse($relatedElbNames) as $instanceId => $relatedElbName) {
+					$this->registerInstance($relatedElbName, $instanceId);
+					$this->logger->info("Registered instance ${instanceId} to ELB ${relatedElbName}");
 				}
 
 			}
