@@ -10,6 +10,7 @@ class Config {
 	private $region = 'ap-northeast-1';
 	private $healthCheckInterval = 10.0;
 	private $gracefulPeriod = 5.0;
+	private $concurrency = 1;
 	private $help = false;
 
 	public function __construct($argv) {
@@ -27,6 +28,7 @@ class Config {
 			'region:',
 			'health-check-interval:',
 			'graceful-period:',
+			'concurrency:',
 			'help',
 		));
 
@@ -71,6 +73,9 @@ class Config {
 
 		if (array_key_exists('graceful-period', $options))
 			$this->gracefulPeriod = doubleval($options['graceful-period']);
+
+		if (array_key_exists('concurrency', $options))
+			$this->concurrency = intval($options['concurrency']);
 
 		if (array_key_exists('help', $options))
 			$this->help = true;
@@ -128,6 +133,10 @@ class Config {
 
 	public function getGracefulPeriod() {
 		return $this->gracefulPeriod;
+	}
+
+	public function getConcurrency() {
+		return $this->concurrency;
 	}
 
 	public function getHelp() {
