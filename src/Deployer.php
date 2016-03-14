@@ -43,38 +43,47 @@ class Deployer {
 				$this->logger->info($instances->count() . ' instances on dependent ELB ' . $elbName);
 			}
 
-			foreach ($this->listInstances($mainElbName) as $instance) {
-
-				$instanceId = $instance->InstanceId->to_string();
-				$this->logger->info("Instance ID: ${instanceId}");
+			foreach (array_chunk($this->listInstances($mainElbName), $this->config->getConcurrency()) as $instances) {
 
 				foreach ($allElbNames as $elbName)
 					$this->waitUntilHealthy($elbName);
 
 				$relatedElbNames = array();
 
-				foreach ($allElbNames as $elbName) {
-					if (!$this->registeredInstance($elbName, $instanceId))
-						continue;
-					$relatedElbNames[] = $elbName;
-					$this->deregisterInstance($elbName, $instanceId);
-					$this->logger->info('Deregistered instance from ' . $elbName);
+				foreach($instances as $instance) {
+					$instanceId = $instance->InstanceId->to_string();
+					$this->logger->info("Instance ID: ${instanceId}");
+
+					foreach ($allElbNames as $elbName) {
+						if (!$this->registeredInstance($elbName, $instanceId))
+							continue;
+						$relatedElbNames[$instanceId] = $elbName;
+						$this->deregisterInstance($elbName, $instanceId);
+						$this->logger->info('Deregistered instance from ' . $elbName);
+					}
 				}
 
 				usleep($this->config->getGracefulPeriod() * 1e6);
 
-				$instance = $this->describeInstance($instanceId);
-				$variables = $this->extractVariables($instance);
-				$command = $this->render($this->config->getCommand(), $variables);
-				$this->logger->info("Run: ${command}");
-				$output = $this->execute($command);
-				$this->logger->info($output);
+				foreach($instances as $instance) {
+					$instanceId = $instance->InstanceId->to_string();
+					$this->logger->info("Instance ID: ${instanceId}");
+
+					$instance = $this->describeInstance($instanceId);
+					$variables = $this->extractVariables($instance);
+					$command = $this->render($this->config->getCommand(), $variables);
+					$this->logger->info("Run: ${command}");
+					$output = $this->execute($command);
+					$this->logger->info($output);
+				}
 
 				usleep($this->config->getGracefulPeriod() * 1e6);
 
-				foreach (array_reverse($relatedElbNames) as $relatedElbName) {
-					$this->registerInstance($relatedElbName, $instanceId);
-					$this->logger->info('Registered instance to ' . $relatedElbName);
+				foreach($instances as $instance) {
+					foreach (array_reverse($relatedElbNames) as $instanceId => $relatedElbName) {
+						$this->registerInstance($relatedElbName, $instanceId);
+						$this->logger->info('Registered instance to ' . $relatedElbName);
+					}
 				}
 
 			}
