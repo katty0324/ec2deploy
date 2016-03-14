@@ -40,39 +40,37 @@ class Deployer {
 
 			foreach ($allElbNames as $elbName) {
 				$instances = $this->listInstances($elbName);
-				$this->logger->info($instances->count() . ' instances on dependent ELB ' . $elbName);
+				$this->logger->info($instances->count() . ' instances on ELB ' . $elbName);
 			}
 
-			foreach (array_chunk($this->listInstances($mainElbName), $this->config->getConcurrency()) as $instances) {
+			foreach (array_chunk($this->listInstances($mainElbName)->getArrayCopy(), $this->config->getConcurrency()) as $instances) {
 
 				foreach ($allElbNames as $elbName)
 					$this->waitUntilHealthy($elbName);
 
 				$relatedElbNames = array();
+				$instanceIds = array();
 
 				foreach($instances as $instance) {
 					$instanceId = $instance->InstanceId->to_string();
-					$this->logger->info("Instance ID: ${instanceId}");
+					$instanceIds[] = $instanceId;
 
 					foreach ($allElbNames as $elbName) {
 						if (!$this->registeredInstance($elbName, $instanceId))
 							continue;
 						$relatedElbNames[$instanceId] = $elbName;
 						$this->deregisterInstance($elbName, $instanceId);
-						$this->logger->info('Deregistered instance from ' . $elbName);
+						$this->logger->info("Deregistered instance ${instanceId} from ELB ${elbName}");
 					}
 				}
 
 				usleep($this->config->getGracefulPeriod() * 1e6);
 
-				foreach($instances as $instance) {
-					$instanceId = $instance->InstanceId->to_string();
-					$this->logger->info("Instance ID: ${instanceId}");
-
+				foreach($instanceIds as $instanceId) {
 					$instance = $this->describeInstance($instanceId);
 					$variables = $this->extractVariables($instance);
 					$command = $this->render($this->config->getCommand(), $variables);
-					$this->logger->info("Run: ${command}");
+					$this->logger->info("Run command `${command}` on instance ${instanceId}");
 					$output = $this->execute($command);
 					$this->logger->info($output);
 				}
@@ -82,7 +80,7 @@ class Deployer {
 				foreach($instances as $instance) {
 					foreach (array_reverse($relatedElbNames) as $instanceId => $relatedElbName) {
 						$this->registerInstance($relatedElbName, $instanceId);
-						$this->logger->info('Registered instance to ' . $relatedElbName);
+						$this->logger->info("Registered instance ${instanceId} to ELB ${relatedElbName}");
 					}
 				}
 

@@ -1,5 +1,7 @@
 <?php
 
+error_reporting(E_ERROR | E_PARSE);
+
 require_once dirname(__FILE__) . '/../aws-sdk-for-php/sdk.class.php';
 require_once dirname(__FILE__) . '/Logger.php';
 require_once dirname(__FILE__) . '/Config.php';
