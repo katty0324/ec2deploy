@@ -58,7 +58,7 @@ class Deployer {
 					foreach ($allElbNames as $elbName) {
 						if (!$this->registeredInstance($elbName, $instanceId))
 							continue;
-						$relatedElbNames[$instanceId] = $elbName;
+						$relatedElbNames[$instanceId][] = $elbName;
 						$this->deregisterInstance($elbName, $instanceId);
 						$this->logger->info("Deregistered instance ${instanceId} from ELB ${elbName}");
 					}
@@ -77,9 +77,11 @@ class Deployer {
 
 				usleep($this->config->getGracefulPeriod() * 1e6);
 
-				foreach (array_reverse($relatedElbNames) as $instanceId => $relatedElbName) {
-					$this->registerInstance($relatedElbName, $instanceId);
-					$this->logger->info("Registered instance ${instanceId} to ELB ${relatedElbName}");
+				foreach($instanceIds as $instanceId) {
+					foreach($relatedElbNames[$instanceId] as $relatedElbName) {
+						$this->registerInstance($relatedElbName, $instanceId);
+						$this->logger->info("Registered instance ${instanceId} to ELB ${relatedElbName}");
+					}
 				}
 
 			}
