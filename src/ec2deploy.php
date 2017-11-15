@@ -1,5 +1,7 @@
 <?php
 
+error_reporting(E_ERROR | E_PARSE);
+
 require_once dirname(__FILE__) . '/../aws-sdk-for-php/sdk.class.php';
 require_once dirname(__FILE__) . '/Logger.php';
 require_once dirname(__FILE__) . '/Config.php';
@@ -18,6 +20,7 @@ Usage: ec2deploy -n <elb-name> -c <command> -k <aws-key> -s <aws-secret>
     --region                region of Amazon EC2 and ELB
     --health-check-interval interval of Amazon ELB health check
     --graceful-period       sleep time for register and deregister instance for Amazon ELB
+    --concurrency           the number of hosts to be deployed at the same time
     --help                  help
 
 EOT;
