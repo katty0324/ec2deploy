@@ -42,6 +42,9 @@ class Deployer
 
             foreach ($allElbNames as $elbName) {
                 $instanceIds = $this->listInstanceIds($elbName);
+                if (count($instanceIds) == 0) {
+                    throw new Exception("No instance is registered in load balancer ${elbName}.");
+                }
                 $this->logger->info(count($instanceIds) . ' instances on ELB ' . $elbName);
             }
 
@@ -66,6 +69,10 @@ class Deployer
 
                 $this->logger->info("Wait for graceful period.");
                 usleep($this->config->getGracefulPeriod() * 1e6);
+
+                foreach ($allElbNames as $elbName) {
+                    $this->waitUntilHealthy($elbName);
+                }
 
                 foreach ($instanceIds as $instanceId) {
                     $instance = $this->describeInstance($instanceId);
@@ -129,8 +136,9 @@ class Deployer
 
     private function render($template, $variables)
     {
-        foreach ($variables as $key => $value)
+        foreach ($variables as $key => $value) {
             $template = str_replace('${' . $key . '}', $value, $template);
+        }
 
         return $template;
     }
@@ -139,8 +147,9 @@ class Deployer
     {
         exec($command, $output, $status);
 
-        if ($status != 0)
+        if ($status != 0) {
             throw new Exception('Command exit code is not zero.');
+        }
 
         return implode("\n", $output);
     }
@@ -153,10 +162,6 @@ class Deployer
                 $result = $this->amazonELB->describeInstanceHealth([
                     'LoadBalancerName' => $elbName,
                 ]);
-
-                if (count($result['InstanceStates']) == 0)
-                    throw new Exception("No instance is registered in load balancer ${elbName}.");
-
                 foreach ($result['InstanceStates'] as $instanceState) {
                     $instanceIds[] = $instanceState['InstanceId'];
                 }
