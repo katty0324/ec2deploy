@@ -14,7 +14,7 @@ ec2deploy -k 'AWS-ACCESS-KEY' -s 'AWS-ACCESS-SECRET' -n 'ELB-NAME' -c 'DEPLOY-CO
 ```shell
 git clone http://github.com/katty0324/ec2deploy.git
 cd ec2deploy/
-git submodule update --init
+composer install
 ```
 
 ## Deploy process
@@ -34,17 +34,9 @@ You can use variables for deploy command.
 
 ```
 instanceId
-imageId
 instanceState
 privateDnsName
 dnsName
-keyName
-instanceType
-launchTime
-availabilityZone
-kernelId
-subnetId
-vpcId
 privateIpAddress
 ipAddress
 tag.XXX (XXX is EC2 instance tag)
@@ -62,14 +54,15 @@ ec2deploy -k 'AWS-ACCESS-KEY' -s 'AWS-ACCESS-SECRET' -n 'ELB-NAME' -c 'ssh ${dns
 Usage: ec2deploy -n <elb-name> -c <command> -k <aws-key> -s <aws-secret>
 
 -n  --elb-name              instance name of Amazon ELB
--d  --dependent-elb-names	instance names of dependent Amazon ELBs (comma separated)
+-d  --dependent-elb-names   instance names of dependent Amazon ELBs (comma separated)
 -c  --command               shell command
 -k  --aws-key               AWS access key
 -s  --aws-secret            AWS access secret
-    --region                region of Amazon EC2 and ELB
-    --health-check-interval interval of Amazon ELB health check
-    --graceful-period       sleep time for register and deregister instance for Amazon ELB
-    --concurrency           the number of hosts to be deployed at the same time
+-r  --region                region of Amazon EC2 and ELB (default: ap-northeast-1)
+    --elb-version           ELB version (default: 1)
+    --health-check-interval interval of Amazon ELB health check (default: 10.0)
+    --graceful-period       sleep time for register and deregister instance for Amazon ELB (default: 5.0)
+    --concurrency           the number of hosts to be deployed at the same time (default: 1)
     --help                  help
 ```
 

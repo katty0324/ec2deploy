@@ -57,7 +57,7 @@ class Deployer
                 $instanceIds = array();
 
                 foreach ($instances as $instance) {
-                    $instanceId = $instance->InstanceId->to_string();
+                    $instanceId = $instance['InstanceId'];
                     $instanceIds[] = $instanceId;
 
                     foreach ($allElbNames as $elbName) {
@@ -107,7 +107,7 @@ class Deployer
         $instances = $this->listInstances($elbName);
 
         foreach ($instances as $instance)
-            if ($instance->InstanceId->to_string() == $instanceId)
+            if ($instance['InstanceId'] == $instanceId)
                 return true;
 
         return false;
@@ -140,28 +140,17 @@ class Deployer
 
     private function extractVariables($instance)
     {
-
-        $item = $instance->instancesSet->item;
-
         $variables = array(
-            'instanceId' => $item->instanceId->to_string(),
-            'imageId' => $item->imageId->to_string(),
-            'instanceState' => $item->instanceState->name->to_string(),
-            'privateDnsName' => $item->privateDnsName->to_string(),
-            'dnsName' => $item->dnsName->to_string(),
-            'keyName' => $item->keyName->to_string(),
-            'instanceType' => $item->instanceType->to_string(),
-            'launchTime' => $item->launchTime->to_string(),
-            'availabilityZone' => $item->placement->availabilityZone->to_string(),
-            'kernelId' => $item->kernelId->to_string(),
-            'subnetId' => $item->subnetId->to_string(),
-            'vpcId' => $item->vpcId->to_string(),
-            'privateIpAddress' => $item->privateIpAddress->to_string(),
-            'ipAddress' => $item->ipAddress->to_string(),
+            'instanceId' => $instance['InstanceId'],
+            'instanceState' => $instance['State']['Name'],
+            'privateDnsName' => $instance['PrivateDnsName'],
+            'dnsName' => $instance['PublicDnsName'],
+            'privateIpAddress' => $instance['PrivateIpAddress'],
+            'ipAddress' => $instance['PublicIpAddress'],
         );
 
-        foreach ($item->tagSet->item as $tag)
-            $variables['tag.' . $tag->key->to_string()] = $tag->value->to_string();
+        foreach ($instance['Tags'] as $tag)
+            $variables['tag.' . $tag['Key']] = $tag['Value'];
 
         return $variables;
 
@@ -191,35 +180,25 @@ class Deployer
 
     private function listInstances($elbName)
     {
-
-        $response = $this->amazonELB->describeInstanceHealth([
+        $result = $this->amazonELB->describeInstanceHealth([
             'LoadBalancerName' => $elbName,
         ]);
 
-        if (!$response->isOK())
-            throw new Exception($response->body->Error->Message);
-
-        if ($response->body->DescribeInstanceHealthResult->InstanceStates->member->count() == 0)
+        if (count($result['InstanceStates']) == 0)
             throw new Exception("No instance is registered in load balancer ${elbName}.");
 
-        return $response->body->DescribeInstanceHealthResult->InstanceStates->member();
-
+        return $result['InstanceStates'];
     }
 
     private function describeInstance($instanceId)
     {
-
-        $response = $this->amazonEC2->describeInstances([
+        $result = $this->amazonEC2->describeInstances([
             'InstanceIds' => [
                 $instanceId,
             ],
         ]);
 
-        if (!$response->isOK())
-            throw new Exception($response->body->Error->Message);
-
-        return $response->body->reservationSet->item;
-
+        return $result['Reservations'][0]['Instances'][0];
     }
 
     private function deregisterInstance($elbName, $instanceId)
