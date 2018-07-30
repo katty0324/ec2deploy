@@ -18,10 +18,11 @@ Usage: ec2deploy -n <elb-name> -c <command> -k <aws-key> -s <aws-secret>
 -c  --command               shell command
 -k  --aws-key               AWS access key
 -s  --aws-secret            AWS access secret
-    --region                region of Amazon EC2 and ELB
-    --health-check-interval interval of Amazon ELB health check
-    --graceful-period       sleep time for register and deregister instance for Amazon ELB
-    --concurrency           the number of hosts to be deployed at the same time
+-r  --region                region of Amazon EC2 and ELB (default: ap-northeast-1)
+    --elb-version           ELB version (default: 1)
+    --health-check-interval interval of Amazon ELB health check (default: 10.0)
+    --graceful-period       sleep time for register and deregister instance for Amazon ELB (default: 5.0)
+    --concurrency           the number of hosts to be deployed at the same time (default: 1)
     --help                  help
 
 EOT;

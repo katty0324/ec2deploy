@@ -10,6 +10,7 @@ class Config
     private $command = null;
     private $awsKey = null;
     private $awsSecret = null;
+    private $elbVersion = 1;
     private $region = 'ap-northeast-1';
     private $healthCheckInterval = 10.0;
     private $gracefulPeriod = 5.0;
@@ -30,6 +31,7 @@ class Config
             'command:',
             'aws-key:',
             'aws-secret:',
+            'elb-version:',
             'region:',
             'health-check-interval:',
             'graceful-period:',
@@ -72,6 +74,9 @@ class Config
 
         if (array_key_exists('region', $options))
             $this->region = strval($options['region']);
+
+        if (array_key_exists('elb-version', $options))
+            $this->elbVersion = intval($options['elb-version']);
 
         if (array_key_exists('health-check-interval', $options))
             $this->healthCheckInterval = doubleval($options['health-check-interval']);
@@ -137,6 +142,11 @@ class Config
     public function getRegion()
     {
         return $this->region;
+    }
+
+    public function getElbVersion()
+    {
+        return $this->elbVersion;
     }
 
     public function getHealthCheckInterval()
