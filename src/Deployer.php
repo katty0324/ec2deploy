@@ -6,10 +6,10 @@ use Aws\Credentials\Credentials;
 use Aws\Ec2\Ec2Client;
 use Aws\ElasticLoadBalancing\ElasticLoadBalancingClient;
 use Aws\ElasticLoadBalancingV2\ElasticLoadBalancingV2Client;
+use Exception;
 
 class Deployer
 {
-
     private $config;
     private $amazonELB;
     private $amazonELBV2;
@@ -18,7 +18,6 @@ class Deployer
 
     public function __construct($config)
     {
-
         $this->config = $config;
 
         $clientArguments = [
@@ -36,39 +35,36 @@ class Deployer
 
     public function deploy()
     {
-
         try {
-
             $mainElbName = $this->config->getElbName();
             $dependentElbNames = $this->config->getDependentElbNames();
             $allElbNames = array_merge(array($mainElbName), $dependentElbNames);
 
             foreach ($allElbNames as $elbName) {
-                $instances = $this->listInstances($elbName);
-                $this->logger->info($instances->count() . ' instances on ELB ' . $elbName);
+                $instanceIds = $this->listInstanceIds($elbName);
+                $this->logger->info(count($instanceIds) . ' instances on ELB ' . $elbName);
             }
 
-            foreach (array_chunk($this->listInstances($mainElbName)->getArrayCopy(), $this->config->getConcurrency()) as $instances) {
+            foreach (array_chunk($this->listInstanceIds($mainElbName), $this->config->getConcurrency()) as $instanceIds) {
 
-                foreach ($allElbNames as $elbName)
+                foreach ($allElbNames as $elbName) {
                     $this->waitUntilHealthy($elbName);
+                }
 
                 $relatedElbNames = array();
-                $instanceIds = array();
 
-                foreach ($instances as $instance) {
-                    $instanceId = $instance['InstanceId'];
-                    $instanceIds[] = $instanceId;
-
+                foreach ($instanceIds as $instanceId) {
                     foreach ($allElbNames as $elbName) {
-                        if (!$this->registeredInstance($elbName, $instanceId))
+                        if (!$this->registeredInstance($elbName, $instanceId)) {
                             continue;
+                        }
                         $relatedElbNames[$instanceId][] = $elbName;
                         $this->deregisterInstance($elbName, $instanceId);
                         $this->logger->info("Deregistered instance ${instanceId} from ELB ${elbName}");
                     }
                 }
 
+                $this->logger->info("Wait for graceful period.");
                 usleep($this->config->getGracefulPeriod() * 1e6);
 
                 foreach ($instanceIds as $instanceId) {
@@ -80,6 +76,7 @@ class Deployer
                     $this->logger->info($output);
                 }
 
+                $this->logger->info("Wait for graceful period.");
                 usleep($this->config->getGracefulPeriod() * 1e6);
 
                 foreach ($instanceIds as $instanceId) {
@@ -88,7 +85,6 @@ class Deployer
                         $this->logger->info("Registered instance ${instanceId} to ELB ${relatedElbName}");
                     }
                 }
-
             }
 
         } catch (Exception $e) {
@@ -98,44 +94,20 @@ class Deployer
         }
 
         return true;
-
     }
 
     private function registeredInstance($elbName, $instanceId)
     {
-
-        $instances = $this->listInstances($elbName);
-
-        foreach ($instances as $instance)
-            if ($instance['InstanceId'] == $instanceId)
-                return true;
-
-        return false;
-
+        $instanceIds = $this->listInstanceIds($elbName);
+        return in_array($instanceId, $instanceIds);
     }
 
     private function waitUntilHealthy($elbName)
     {
-
-        while (!$this->isHealthy($this->listInstances($elbName))) {
+        while (!$this->isHealthy($elbName)) {
             $this->logger->info("${elbName} is currently not healthy...");
             usleep($this->config->getHealthCheckInterval() * 1e6);
         }
-
-    }
-
-    private function isHealthy($instances)
-    {
-
-        if ($instances->count() == 0)
-            return false;
-
-        foreach ($instances as $instance)
-            if ($instance->State != 'InService')
-                return false;
-
-        return true;
-
     }
 
     private function extractVariables($instance)
@@ -153,41 +125,167 @@ class Deployer
             $variables['tag.' . $tag['Key']] = $tag['Value'];
 
         return $variables;
-
     }
 
     private function render($template, $variables)
     {
-
         foreach ($variables as $key => $value)
             $template = str_replace('${' . $key . '}', $value, $template);
 
         return $template;
-
     }
 
     private function execute($command)
     {
-
         exec($command, $output, $status);
 
         if ($status != 0)
             throw new Exception('Command exit code is not zero.');
 
         return implode("\n", $output);
-
     }
 
-    private function listInstances($elbName)
+    private function listInstanceIds($elbName)
     {
-        $result = $this->amazonELB->describeInstanceHealth([
-            'LoadBalancerName' => $elbName,
-        ]);
+        $instanceIds = [];
+        switch ($this->config->getElbVersion()) {
+            case 1:
+                $result = $this->amazonELB->describeInstanceHealth([
+                    'LoadBalancerName' => $elbName,
+                ]);
 
-        if (count($result['InstanceStates']) == 0)
-            throw new Exception("No instance is registered in load balancer ${elbName}.");
+                if (count($result['InstanceStates']) == 0)
+                    throw new Exception("No instance is registered in load balancer ${elbName}.");
 
-        return $result['InstanceStates'];
+                foreach ($result['InstanceStates'] as $instanceState) {
+                    $instanceIds[] = $instanceState['InstanceId'];
+                }
+                break;
+            case 2:
+                $targetGroup = $this->describeTargetGroup($elbName);
+                $result = $this->amazonELBV2->describeTargetHealth([
+                    'TargetGroupArn' => $targetGroup['TargetGroupArn'],
+                ]);
+                foreach ($result['TargetHealthDescriptions'] as $targetHealthDescription) {
+                    $instanceIds[] = $targetHealthDescription['Target']['Id'];
+                }
+                break;
+            default:
+                throw new Exception('Invalid elb version.');
+        }
+        return $instanceIds;
+    }
+
+    private function isHealthy($elbName)
+    {
+        switch ($this->config->getElbVersion()) {
+            case 1:
+                $result = $this->amazonELB->describeInstanceHealth([
+                    'LoadBalancerName' => $elbName,
+                ]);
+
+                if (count($result['InstanceStates']) == 0) {
+                    return false;
+                }
+
+                foreach ($result['InstanceStates'] as $instanceState) {
+                    if ($instanceState['State'] != 'InService') {
+                        return false;
+                    }
+                }
+
+                return true;
+            case 2:
+                $targetGroup = $this->describeTargetGroup($elbName);
+                $result = $this->amazonELBV2->describeTargetHealth([
+                    'TargetGroupArn' => $targetGroup['TargetGroupArn'],
+                ]);
+
+                if (count($result['TargetHealthDescriptions']) == 0) {
+                    return false;
+                }
+
+                foreach ($result['TargetHealthDescriptions'] as $targetHealthDescription) {
+                    if ($targetHealthDescription['TargetHealth']['State'] != 'healthy') {
+                        return false;
+                    }
+                }
+
+                return true;
+            default:
+                throw new Exception('Invalid elb version.');
+        }
+    }
+
+    private function deregisterInstance($elbName, $instanceId)
+    {
+        switch ($this->config->getElbVersion()) {
+            case 1:
+                $this->amazonELB->deregisterInstancesFromLoadBalancer([
+                    'Instances' => [
+                        [
+                            'InstanceId' => $instanceId,
+                        ],
+                    ],
+                    'LoadBalancerName' => $elbName,
+                ]);
+                break;
+            case 2:
+                $targetGroup = $this->describeTargetGroup($elbName);
+                $this->amazonELBV2->deregisterTargets([
+                    'TargetGroupArn' => $targetGroup['TargetGroupArn'],
+                    'Targets' => [
+                        [
+                            'Id' => $instanceId,
+                        ],
+                    ],
+                ]);
+                break;
+            default:
+                throw new Exception('Invalid elb version.');
+        }
+    }
+
+    private function registerInstance($elbName, $instanceId)
+    {
+        switch ($this->config->getElbVersion()) {
+            case 1:
+                $this->amazonELB->registerInstancesWithLoadBalancer([
+                    'Instances' => [
+                        [
+                            'InstanceId' => $instanceId,
+                        ],
+                    ],
+                    'LoadBalancerName' => $elbName,
+                ]);
+                break;
+            case 2:
+                $targetGroup = $this->describeTargetGroup($elbName);
+                $this->amazonELBV2->registerTargets([
+                    'TargetGroupArn' => $targetGroup['TargetGroupArn'],
+                    'Targets' => [
+                        [
+                            'Id' => $instanceId,
+                        ],
+                    ],
+                ]);
+                break;
+            default:
+                throw new Exception('Invalid elb version.');
+        }
+    }
+
+    private function describeTargetGroup($elbName)
+    {
+        switch ($this->config->getElbVersion()) {
+            case 2:
+                $result = $this->amazonELBV2->describeTargetGroups([
+                    'Names' => [$elbName],
+                ]);
+                return $result['TargetGroups'][0];
+            default:
+                throw new Exception('Invalid elb version.');
+        }
     }
 
     private function describeInstance($instanceId)
@@ -200,42 +298,4 @@ class Deployer
 
         return $result['Reservations'][0]['Instances'][0];
     }
-
-    private function deregisterInstance($elbName, $instanceId)
-    {
-
-        $response = $this->amazonELB->deregisterInstancesFromLoadBalancer([
-            'Instances' => [
-                [
-                    'InstanceId' => $instanceId,
-                ],
-            ],
-            'LoadBalancerName' => $elbName,
-        ]);
-
-        if (!$response->isOK())
-            throw new Exception($response->body->Error->Message);
-
-        return $response->body->DeregisterInstancesFromLoadBalancerResult->Instances->member();
-
-    }
-
-    private function registerInstance($elbName, $instanceId)
-    {
-
-        $response = $this->amazonELB->registerInstancesWithLoadBalancer([
-            'Instances' => [
-                [
-                    'InstanceId' => $instanceId,
-                ],
-            ],
-            'LoadBalancerName' => $elbName,
-        ]);
-
-        if (!$response->isOK())
-            throw new Exception($response->body->Error->Message);
-
-        return $response->body->RegisterInstancesWithLoadBalancerResult->Instances->member();
-    }
-
 }

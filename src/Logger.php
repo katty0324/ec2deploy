@@ -4,7 +4,6 @@ namespace ec2deploy;
 
 class Logger
 {
-
     public function debug($text)
     {
         echo "[DEBUG] ${text}\n";
@@ -24,5 +23,4 @@ class Logger
     {
         echo "[ERROR] ${text}\n";
     }
-
 }

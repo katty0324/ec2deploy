@@ -4,9 +4,8 @@ namespace ec2deploy;
 
 class Config
 {
-
     private $elbName = null;
-    private $dependentElbNames = array();
+    private $dependentElbNames = [];
     private $command = null;
     private $awsKey = null;
     private $awsSecret = null;
@@ -24,8 +23,7 @@ class Config
 
     public function setCommandLineOptions($argv)
     {
-
-        $options = getopt('n:d:c:k:s:', array(
+        $options = getopt('n:d:c:k:s:', [
             'elb-name:',
             'dependent-elb-names:',
             'command:',
@@ -37,81 +35,100 @@ class Config
             'graceful-period:',
             'concurrency:',
             'help',
-        ));
+        ]);
 
-        if (array_key_exists('n', $options))
+        if (array_key_exists('n', $options)) {
             $this->elbName = strval($options['n']);
+        }
 
-        if (array_key_exists('elb-name', $options))
+        if (array_key_exists('elb-name', $options)) {
             $this->elbName = strval($options['elb-name']);
+        }
 
-        if (array_key_exists('d', $options))
+        if (array_key_exists('d', $options)) {
             $this->dependentElbNames = explode(',', strval($options['d']));
+        }
 
-        if (array_key_exists('dependent-elb-names', $options))
+        if (array_key_exists('dependent-elb-names', $options)) {
             $this->dependentElbNames = explode(',', strval($options['dependent-elb-names']));
+        }
 
-        if (array_key_exists('c', $options))
+        if (array_key_exists('c', $options)) {
             $this->command = strval($options['c']);
+        }
 
-        if (array_key_exists('command', $options))
+        if (array_key_exists('command', $options)) {
             $this->command = strval($options['command']);
+        }
 
-        if (array_key_exists('k', $options))
+        if (array_key_exists('k', $options)) {
             $this->awsKey = strval($options['k']);
+        }
 
-        if (array_key_exists('aws-key', $options))
+        if (array_key_exists('aws-key', $options)) {
             $this->awsKey = strval($options['aws-key']);
+        }
 
-        if (array_key_exists('s', $options))
+        if (array_key_exists('s', $options)) {
             $this->awsSecret = strval($options['s']);
+        }
 
-        if (array_key_exists('aws-secret', $options))
+        if (array_key_exists('aws-secret', $options)) {
             $this->awsSecret = strval($options['aws-secret']);
+        }
 
-        if (array_key_exists('r', $options))
+        if (array_key_exists('r', $options)) {
             $this->region = strval($options['r']);
+        }
 
-        if (array_key_exists('region', $options))
+        if (array_key_exists('region', $options)) {
             $this->region = strval($options['region']);
+        }
 
-        if (array_key_exists('elb-version', $options))
+        if (array_key_exists('elb-version', $options)) {
             $this->elbVersion = intval($options['elb-version']);
+        }
 
-        if (array_key_exists('health-check-interval', $options))
+        if (array_key_exists('health-check-interval', $options)) {
             $this->healthCheckInterval = doubleval($options['health-check-interval']);
+        }
 
-        if (array_key_exists('graceful-period', $options))
+        if (array_key_exists('graceful-period', $options)) {
             $this->gracefulPeriod = doubleval($options['graceful-period']);
+        }
 
-        if (array_key_exists('concurrency', $options))
+        if (array_key_exists('concurrency', $options)) {
             $this->concurrency = intval($options['concurrency']);
+        }
 
-        if (array_key_exists('help', $options))
+        if (array_key_exists('help', $options)) {
             $this->help = true;
+        }
 
-        if (!$this->validate())
+        if (!$this->validate()) {
             $this->help = true;
-
+        }
     }
 
     private function validate()
     {
-
-        if (!$this->elbName)
+        if (!$this->elbName) {
             return false;
+        }
 
-        if (!$this->command)
+        if (!$this->command) {
             return false;
+        }
 
-        if (!$this->awsKey)
+        if (!$this->awsKey) {
             return false;
+        }
 
-        if (!$this->awsSecret)
+        if (!$this->awsSecret) {
             return false;
+        }
 
         return true;
-
     }
 
     public function getElbName()
@@ -168,5 +185,4 @@ class Config
     {
         return $this->help;
     }
-
 }
