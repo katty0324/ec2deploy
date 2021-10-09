@@ -1,0 +1,21 @@
+{
+    "name": "katty0324/ec2deploy",
+    "description": "Zero-downtime deploy tool for Amazon ELB and backend Amazon EC2 instances",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "katty0324",
+            "email": "kataokanaoyuki@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=5.5",
+        "aws/aws-sdk-php": "~3.64"
+    },
+    "autoload": {
+        "psr-4": {
+            "ec2deploy\\": "src/"
+        }
+    }
+}

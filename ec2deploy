@@ -1,3 +1,35 @@
 #!/usr/bin/php
 <?php
-require_once dirname(__FILE__) . '/src/ec2deploy.php';
+
+error_reporting(E_ERROR | E_PARSE);
+
+require_once 'vendor/autoload.php';
+
+use ec2deploy\Config;
+use ec2deploy\Deployer;
+
+$config = new Config($argv);
+if ($config->getHelp()) {
+    echo <<<EOT
+Usage: ec2deploy -n <elb-name> -c <command> -k <aws-key> -s <aws-secret>
+
+-n  --elb-name              name of classic load balancer (or target group)
+-d  --dependent-elb-names   comma separated names of dependent classic load balancers (or target groups)
+-c  --command               shell command
+-k  --aws-key               AWS access key
+-s  --aws-secret            AWS access secret
+-r  --region                region of Amazon EC2 and ELB (default: ap-northeast-1)
+    --elb-version           ELB version (default: 1)
+    --health-check-interval interval of Amazon ELB health check (default: 10.0)
+    --graceful-period       sleep time for register and deregister instance for Amazon ELB (default: 5.0)
+    --concurrency           the number of hosts to be deployed at the same time (default: 1)
+    --help                  help
+
+EOT;
+    exit;
+}
+
+$deployer = new Deployer($config);
+if (!$deployer->deploy()) {
+    exit(1);
+}
